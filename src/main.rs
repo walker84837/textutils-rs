@@ -1,113 +1,86 @@
-use std::{
-    error::Error,
-    io::{self, Read},
-};
+use anyhow::{anyhow, Result};
+use std::io::{self, Read};
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
 struct Options {
-    /// Convert text to lowercase
-    #[structopt(short, long)]
+    #[structopt(short, long, help = "Convert text to lowercase")]
     lowercase: bool,
 
-    /// Convert text to uppercase
-    #[structopt(short, long)]
+    #[structopt(short, long, help = "Convert text to uppercase")]
     uppercase: bool,
 
-    /// Reverse text
-    #[structopt(short, long)]
+    #[structopt(short, long, help = "Reverse text")]
     reverse: bool,
 
-    /// Count words
-    #[structopt(short, long)]
-    wordcount: bool,
+    #[structopt(short, long, help = "Count words")]
+    words: bool,
 
-    /// Count characters
-    #[structopt(short, long)]
-    charcount: bool,
+    #[structopt(short, long, help = "Count characters")]
+    chars: bool,
 
-    /// Display this help message
-    #[structopt(short, long)]
-    help: bool,
-
-    /// The input text
-    #[structopt(name = "TEXT")]
+    #[structopt(help = "The input text")]
     input: Option<String>,
 }
 
-fn to_lowercase(input: &str) -> String {
-    input.to_lowercase()
+struct TextOperations {
+    input: String,
 }
 
-fn to_uppercase(input: &str) -> String {
-    input.to_uppercase()
+impl TextOperations {
+    pub fn new(input: String) -> TextOperations {
+        TextOperations { input }
+    }
+
+    pub fn lowercase(&self) -> String {
+        self.input.to_lowercase()
+    }
+
+    pub fn uppercase(&self) -> String {
+        self.input.to_uppercase()
+    }
+
+    pub fn reverse_text(&self) -> String {
+        self.input.chars().rev().collect()
+    }
+
+    pub fn count_words(&self) -> usize {
+        self.input.split_whitespace().count()
+    }
+
+    pub fn count_characters(&self) -> usize {
+        self.input.chars().count()
+    }
 }
 
-fn reverse_text(input: &str) -> String {
-    input.chars().rev().collect()
+pub fn read_from_stdin() -> String {
+    let mut buffer = String::new();
+    let _ = io::stdin()
+        .read_to_string(&mut buffer)
+        .map_err(|err| anyhow!("An error occurred while reading from stdin: {err}"));
+    buffer
 }
 
-fn count_words(input: &str) -> usize {
-    input.split_whitespace().count()
-}
-
-fn count_characters(input: &str) -> usize {
-    input.chars().count()
-}
-
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<()> {
     let options = Options::from_args();
 
-    if options.help {
-        Options::clap().print_help()?;
-    } else if options.lowercase {
-        let input = options.input.unwrap_or_else(|| {
-            let mut buffer = String::new();
-            io::stdin()
-                .read_to_string(&mut buffer)
-                .expect("Failed to read from stdin");
-            buffer
-        });
-        println!("{}", to_lowercase(&input));
+    let opers = TextOperations::new(options.input.unwrap_or_else(read_from_stdin));
+
+    if options.lowercase {
+        println!("{}", opers.lowercase());
     } else if options.uppercase {
-        let input = options.input.unwrap_or_else(|| {
-            let mut buffer = String::new();
-            io::stdin()
-                .read_to_string(&mut buffer)
-                .expect("Failed to read from stdin");
-            buffer
-        });
-        println!("{}", to_uppercase(&input));
+        println!("{}", opers.uppercase());
     } else if options.reverse {
-        let input = options.input.unwrap_or_else(|| {
-            let mut buffer = String::new();
-            io::stdin()
-                .read_to_string(&mut buffer)
-                .expect("Failed to read from stdin");
-            buffer
-        });
-        println!("{}", reverse_text(&input));
-    } else if options.wordcount {
-        let input = options.input.unwrap_or_else(|| {
-            let mut buffer = String::new();
-            io::stdin()
-                .read_to_string(&mut buffer)
-                .expect("Failed to read from stdin");
-            buffer
-        });
-        println!("{}", count_words(&input));
-    } else if options.charcount {
-        let input = options.input.unwrap_or_else(|| {
-            let mut buffer = String::new();
-            io::stdin()
-                .read_to_string(&mut buffer)
-                .expect("Failed to read from stdin");
-            buffer
-        });
-        println!("{}", count_characters(&input));
+        println!("{}", opers.reverse_text());
+    } else if options.words {
+        println!("{}", opers.count_words());
+    } else if options.chars {
+        println!("{}", opers.count_characters());
     } else {
-        eprintln!("Invalid option");
+        eprintln!("Invalid options.");
         Options::clap().print_help()?;
+        println!("\n");
+        return Err(anyhow!("Please provide a correct argument."));
     }
 
     Ok(())
